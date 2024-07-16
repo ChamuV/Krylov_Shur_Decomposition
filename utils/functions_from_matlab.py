@@ -142,6 +142,7 @@ def krylov_ata_expand(A, V, U, c, k=10):
 
 
 def krylov_schur_svd(A, **kwargs):
+    print(1)
     nr = kwargs.get('nr', 1)
     v1 = kwargs.get('v1', None)
     tol = kwargs.get('tol', 1e-6)
