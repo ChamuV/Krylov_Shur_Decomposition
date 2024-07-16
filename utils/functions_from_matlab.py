@@ -66,7 +66,6 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     for j in range(k):
         if reortho:
             r = mv(A, V[:, j], 0)
-            print(r)
             if j == 0 and reortho == 2:
                 U = np.zeros((len(r), k))
         else:
