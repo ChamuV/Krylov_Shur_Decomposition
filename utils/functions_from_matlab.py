@@ -1,7 +1,7 @@
 import numpy as np
 
 
-np.set_printoptions(formatter={'float': '{: 0.4f}'.format})
+#np.set_printoptions(formatter={'float': '{: 0.4f}'.format})
 
 
 def mv(A, v, transp_flag):
@@ -75,8 +75,9 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
                 r -= U[:, :j] @ (U[:, :j].T @ r)
-            else:
-                r -= beta[j-1] * u  ## TODO CHECK
+            # ## TODO CHECK ### ASK
+            #else:
+            #    r -= beta[j-1] * u  ### TODO CHECK
         alpha[j] = np.linalg.norm(r)
         if alpha[j] == 0:
             break
