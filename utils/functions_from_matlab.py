@@ -119,24 +119,24 @@ def krylov_ata_expand(A, V, U, c, k=10):
     U = np.concatenate((U, np.zeros((U.shape[0], k))), axis=1)
     alpha = np.zeros(k)
     beta = np.zeros(k)
-
-    for j in range(m - 1, k + m):
-        if j == m - 1:
-            r = mv(A, V[:, j], 0) - U[:, :j-1] @ c[:j-1]
+    
+    for j in range(m, k + m):
+        if j == m:
+            r = mv(A, V[:, j - 1], 0) - (U[:, :j - 1] @ c.T)
         else:
-            r = mv(A, V[:, j], 0) - beta[j-m] * U[:, j-1]
+            r = mv(A, V[:, j - 1], 0) - beta[j - m - 1] * U[:, j - 2]
 
-        r = r - U[:, :j-1] @ (U[:, :j-1].T @ r)
-        alpha[j-m+1] = np.linalg.norm(r)
-        if alpha[j-m] == 0:
+        r = r - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
+        alpha[j - m] = np.linalg.norm(r)
+        if alpha[j - m] == 0:
             break
-        U[:, j] = r / alpha[j-m+1]
-        r = mv(A.T, U[:, j], 1) - alpha[j-m+1] * V[:, j]
+        U[:, j - 1] = r / alpha[j - m]
+        r = mv(A, U[:, j - 1], 1) - alpha[j - m] * V[:, j - 1]
         r = r - V[:, :j] @ (V[:, :j].T @ r)
-        beta[j-m+1] = np.linalg.norm(r)
-        if beta[j-m+1] == 0:
+        beta[j - m] = np.linalg.norm(r)
+        if beta[j - m] == 0:
             break
-        V[:, j+1] = r / beta[j-m+1]
+        V[:, j] = r / beta[j - m]
 
     return V, U, alpha, beta
 
@@ -149,61 +149,61 @@ def krylov_schur_svd(A, **kwargs):
     mindim = kwargs.get('mindim', 10)
     maxdim = kwargs.get('maxdim', 20)
     maxit = kwargs.get('maxit', 1000)
-    info = kwargs.get('info', 1)
+    target = kwargs.get('target', np.inf)
+    info = kwargs.get('info',1)
 
     if v1 is None:
         v1 = np.random.rand(A.shape[1])
-
+    
     if mindim < nr:
         mindim = nr
     if maxdim < 2 * mindim:
         maxdim = 2 * mindim
-
+    
     if absrel == 'rel' and np.issubdtype(A.dtype, np.number):
         tol = tol * np.linalg.norm(A, 1)
 
     B = np.zeros((maxdim, maxdim + 1))
     V, U, alpha, beta = krylov_ata(A, v1, mindim)
-    B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) \
-        + np.diag(beta, 1)
-    hist = np.zeros(maxit)
+    
+    # Bidiagonal Form for the first mindim rows and cols
+    B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
 
+    hist = np.zeros(maxit, dtype=np.float64)
+    np.set_printoptions(precision=8)
+    
     for k in range(maxit):
-        V, U, alpha, beta = krylov_ata_expand(A, V, U, B[:mindim, mindim],
-                                              maxdim - mindim)
-        B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + \
-            np.diag(beta[:maxdim - mindim - 1], 1)
+        V, U, alpha, beta = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim)
+        B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + np.diag(beta[:maxdim - mindim - 1], 1)
+        
         B[maxdim - 1, maxdim] = beta[maxdim - mindim - 1]
         X, sigma, Y = np.linalg.svd(B[:maxdim, :maxdim])
-
+        
         # Restart of Lanczos algorithm
-        V = np.concatenate((element(V[:, :maxdim] @ Y, list(range(V.shape[0])),
-                                    list(range(mindim))), V[:, maxdim:maxdim
-                                                            + 1]), axis=1)
-        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])),
-                    list(range(mindim)))
+        V = np.concatenate((element(V[:, :maxdim] @ Y, list(range(V.shape[0])), list(range(mindim))), V[:, maxdim:maxdim + 1]), axis=1)
+        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])), list(range(mindim)))
+        
         c = B[:, maxdim]
         e = (c @ X)[:mindim]
-        B[:mindim, :mindim + 1] = np.concatenate((np.diag(sigma[:mindim]),
-                                                  e.reshape(-1, 1)), axis=1)
 
+        B[:mindim, :mindim + 1] = np.concatenate((np.diag(sigma[:mindim]), e.reshape(-1, 1)), axis=1)
         err = np.linalg.norm(e[:nr])
         hist[k] = err
-
+        
         if info:
-            print(f'{k:4d}  {err:6.2e}')
-            print(sigma[:min(3, nr)])
-
-        if err < tol:
+            print(str(k) + ": " + str(hist[k]))
+        
+        if hist[k] < tol:
             sigma = sigma[:nr]
             V = V[:, :nr]
             U = U[:, :nr]
             mvs = np.arange(1, k + 1) * (maxdim - mindim) + mindim
-            print(f"Found after {k} iterations with residual = {err:6.2e}")
+            print(f"Found after {k} iterations with residual = {hist[k]}")
             return sigma, V, U, hist[:k+1], mvs
-
+    
+    mvs = 2 * (np.arange(1, k + 1) * (maxdim - mindim) + mindim)
     if info:
-        print(f"Quit after max {k} iterations with residual = {err:6.2e}")
+        print(f"Quit after max {k} iterations with residual = {err}")
     sigma = sigma[:mindim]
     V = V[:, :mindim]
     return sigma, V, U, hist, mvs
