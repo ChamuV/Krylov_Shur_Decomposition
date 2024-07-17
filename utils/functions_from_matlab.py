@@ -142,7 +142,6 @@ def krylov_ata_expand(A, V, U, c, k=10):
 
 
 def krylov_schur_svd(A, **kwargs):
-    print(1)
     nr = kwargs.get('nr', 1)
     v1 = kwargs.get('v1', None)
     tol = kwargs.get('tol', 1e-6)
@@ -150,7 +149,7 @@ def krylov_schur_svd(A, **kwargs):
     mindim = kwargs.get('mindim', 10)
     maxdim = kwargs.get('maxdim', 20)
     maxit = kwargs.get('maxit', 1000)
-    info = kwargs.get('info', 0)
+    info = kwargs.get('info', 1)
 
     if v1 is None:
         v1 = np.random.rand(A.shape[1])
@@ -191,7 +190,7 @@ def krylov_schur_svd(A, **kwargs):
         err = np.linalg.norm(e[:nr])
         hist[k] = err
 
-        if info > 1:
+        if info:
             print(f'{k:4d}  {err:6.2e}')
             print(sigma[:min(3, nr)])
 
