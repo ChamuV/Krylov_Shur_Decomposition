@@ -47,17 +47,16 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if v1 is None:
         v1 = np.random.randn(A.shape[1])
 
-
-    if (k > min(A.shape)):
-        k = min(A.shape)
+    k = min(k, min(A.shape))
 
     alpha = np.zeros(k)
     beta = np.zeros(k if full else k-1)
 
+    len_v1 = len(v1)
     if reortho:
-        V = np.zeros((len(v1), k + 1))
+        V = np.zeros((len_v1, k + 1))
         V[:, 0] = v1 / np.linalg.norm(v1)
-        U = np.zeros((A.shape[0], k))
+        #U = np.zeros((A.shape[0], k))
     else:
         v = v1 / np.linalg.norm(v1)
 
@@ -73,9 +72,8 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
                 r -= U[:, :j] @ (U[:, :j].T @ r)
-            # ## TODO CHECK ### ASK
-            # else:
-            #    r -= beta[j-1] * u  ### TODO CHECK
+            else:
+                r -= beta[j-1] * u
         alpha[j] = np.linalg.norm(r)
         if alpha[j] == 0:
             break
@@ -99,7 +97,7 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
                 break
 
             if reortho:
-                V[:, j + 1] = r / beta[j]
+                V[:, j+1] = r / beta[j]
             else:
                 v = r / beta[j]
 
@@ -108,6 +106,7 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if reortho < 2:
         U = u
 
+    
     return V, U, alpha, beta
 
 
@@ -124,13 +123,13 @@ def krylov_ata_expand(A, V, U, c, k=10):
         else:
             r = mv(A, V[:, j - 1], 0) - beta[j - m - 1] * U[:, j - 2]
 
-        r = r - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
+        r -= - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
         alpha[j - m] = np.linalg.norm(r)
         if alpha[j - m] == 0:
             break
         U[:, j - 1] = r / alpha[j - m]
         r = mv(A, U[:, j - 1], 1) - alpha[j - m] * V[:, j - 1]
-        r = r - V[:, :j] @ (V[:, :j].T @ r)
+        r -= V[:, :j] @ (V[:, :j].T @ r)
         beta[j - m] = np.linalg.norm(r)
         if beta[j - m] == 0:
             break
@@ -139,42 +138,34 @@ def krylov_ata_expand(A, V, U, c, k=10):
     return V, U, alpha, beta
 
 
-def krylov_schur_svd(A, **kwargs):
-    nr = kwargs.get('nr', 1)
-    v1 = kwargs.get('v1', None)
-    tol = kwargs.get('tol', 1e-6)
-    absrel = kwargs.get('absrel', 'rel')
-    mindim = kwargs.get('mindim', 10)
-    maxdim = kwargs.get('maxdim', 20)
-    maxit = kwargs.get('maxit', 1000)
-    target = kwargs.get('target', np.inf)
-    info = kwargs.get('info',1)
-
+def krylov_schur_svd(A, v1 = None, nr = 1, tol = 1e-6, absrel = 'rel', mindim = 10, maxdim = 20, maxit = 1000, target = np.inf, info = 1):
     if v1 is None:
         v1 = np.random.rand(A.shape[1])
-
     if mindim < nr:
         mindim = nr
     if maxdim < 2 * mindim:
         maxdim = 2 * mindim
     if absrel == 'rel':
-        tol = tol * np.linalg.norm(A, 1)
+        tol *= np.linalg.norm(A, 1)
 
     B = np.zeros((maxdim, maxdim + 1))
+
     #Slow Here
     V, U, alpha, beta = krylov_ata(A, v1, mindim)
     print(2)
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
-
     hist = np.zeros(maxit, dtype=np.float64)
     
     np.set_printoptions(precision=8)
     
+    #Modified MATLAB code ordering
     print(3)
+    v, u, a, b = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim)
     for k in range(maxit):
         # Slow Here
-        V, U, alpha, beta = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim)
+        V, U, alpha, beta = v.copy(), u.copy(), a.copy(), b.copy()
+        
         print(4)
         B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + np.diag(beta[:maxdim - mindim - 1], 1)
         
