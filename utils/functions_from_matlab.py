@@ -1,12 +1,5 @@
 import numpy as np
 
-
-def unv(j, n):
-    e = np.zeros(n)
-    e[j] = 1
-    return e
-
-
 def element(A, i=None, j=None):
     # Handling default arguments
     if i is None:
@@ -24,6 +17,7 @@ def element(A, i=None, j=None):
     return e
 
 
+#Performs Gram-Schmidt Method
 def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if v1 is None:
         v1 = np.random.randn(A.shape[1])
@@ -81,7 +75,7 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
         U = u
     return V, U, alpha, beta
 
-
+#Expands the number of basis vectors in the space
 def krylov_ata_expand(A, V, U, c, k=10):
     m = V.shape[1]
     V = np.concatenate((V, np.zeros((V.shape[0], k))), axis=1)
