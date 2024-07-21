@@ -143,7 +143,7 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
     hist = np.zeros(maxit, dtype=np.float64)    
-    np.set_printoptions(precision=12) 
+    np.set_printoptions(precision=15) 
     # Modified MATLAB code ordering
     print(3)
     # Slow Here
@@ -169,10 +169,10 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
             sigma = sigma[:nr]
             V = V[:, :nr]
             U = U[:, :nr]
-            mvs = np.arange(1, k + 1) * (maxdim - mindim) + mindim
+            mvs = np.arange(1,k + 2) * (maxdim - mindim) + mindim
             print(f"Found after {k + 1} iteration(s) with residual = {err}")
             return sigma, V, U, hist[:k+1], mvs   
-    mvs = 2 * (np.arange(1, k + 1) * (maxdim - mindim) + mindim)
+    mvs = 2 * (np.arange(1,k + 2) * (maxdim - mindim) + mindim)
     if info:
         print(f"Quit after max {k + 1} iterations with residual = {err}")
     sigma = sigma[:mindim]
