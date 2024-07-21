@@ -183,7 +183,6 @@ def krylov_schur_svd(A, v1 = None, nr = 1, tol = 1e-6, absrel = 'rel', mindim = 
             V = V[:, :nr]
             U = U[:, :nr]
             mvs = np.arange(1, k + 1) * (maxdim - mindim) + mindim
-            print(mvs)
             print(f"Found after {k + 1} iteration(s) with residual = {err}")
             return sigma, V, U, hist[:k+1], mvs
     
