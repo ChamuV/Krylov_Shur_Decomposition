@@ -56,7 +56,7 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if reortho:
         V = np.zeros((len_v1, k + 1))
         V[:, 0] = v1 / np.linalg.norm(v1)
-        #U = np.zeros((A.shape[0], k))
+        # U = np.zeros((A.shape[0], k))
     else:
         v = v1 / np.linalg.norm(v1)
 
@@ -72,8 +72,8 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
                 r -= U[:, :j] @ (U[:, :j].T @ r)
-            else:
-                r -= beta[j-1] * u
+            # else: ###CHECK THIS###
+            #   r -= beta[j-1] * u
         alpha[j] = np.linalg.norm(r)
         if alpha[j] == 0:
             break
@@ -137,7 +137,7 @@ def krylov_ata_expand(A, V, U, c, k=10):
     return V, U, alpha, beta
 
 
-def krylov_schur_svd(A, v1 = None, nr = 1, tol = 1e-6, absrel = 'rel', mindim = 10, maxdim = 20, maxit = 1000, target = np.inf, info = 1):
+def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim=20, maxit=1000, target=np.inf, info=1):
     if v1 is None:
         v1 = np.random.rand(A.shape[1])
     if mindim < nr:
@@ -155,11 +155,9 @@ def krylov_schur_svd(A, v1 = None, nr = 1, tol = 1e-6, absrel = 'rel', mindim = 
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
     hist = np.zeros(maxit, dtype=np.float64)    
-<<<<<<< HEAD
-    np.set_printoptions(precision=12) 
-=======
+
     np.set_printoptions(precision=8) 
->>>>>>> 4fa99cba206faa5649ea6bedbfc61942d601a3ba
+
     # Modified MATLAB code ordering
     print(3)
     # Slow Here
@@ -195,4 +193,5 @@ def krylov_schur_svd(A, v1 = None, nr = 1, tol = 1e-6, absrel = 'rel', mindim = 
         print(f"Quit after max {k + 1} iterations with residual = {err}")
     sigma = sigma[:mindim]
     V = V[:, :mindim]
+    
     return sigma, V, U, hist, mvs
