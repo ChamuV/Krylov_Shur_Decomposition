@@ -1,23 +1,18 @@
 import numpy as np
 
 
-# np.set_printoptions(formatter={'float': '{: 0.4f}'.format})
-
-
 def unv(j, n):
     e = np.zeros(n)
     e[j] = 1
     return e
 
 
-#  Get rid of function aspect
 def element(A, i=None, j=None):
     # Handling default arguments
     if i is None:
         i = slice(None)  # Selecting all rows
     if j is None:
         j = slice(None)  # Selecting all columns
-
     if isinstance(A, np.ndarray):  # Matrix
         if min(A.shape) > 1:  # Check if A is not a vector
             if isinstance(i, list) and isinstance(j, list):
@@ -26,27 +21,22 @@ def element(A, i=None, j=None):
                 e = A[i, j]
         else:
             e = A[i] if isinstance(i, list) else A[i]
-    
     return e
 
 
 def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if v1 is None:
         v1 = np.random.randn(A.shape[1])
-
     k = min(k, min(A.shape))
-
     alpha = np.zeros(k)
     beta = np.zeros(k if full else k-1)
-
     len_v1 = len(v1)
     if reortho:
         V = np.zeros((len_v1, k + 1))
         V[:, 0] = v1 / np.linalg.norm(v1)
-        #U = np.zeros((A.shape[0], k))
+        # U = np.zeros((A.shape[0], k))
     else:
         v = v1 / np.linalg.norm(v1)
-
     for j in range(k):
         if reortho:
             r = A @ V[:, j]
@@ -59,12 +49,11 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
                 r -= U[:, :j] @ (U[:, :j].T @ r)
-            else:
-                r -= beta[j-1] * u
+            # else: ####CHECK WHAT TO DO HERE
+            #    r -= beta[j-1] * u
         alpha[j] = np.linalg.norm(r)
         if alpha[j] == 0:
             break
-
         if reortho == 2:
             U[:, j] = r / alpha[j]
             r = A.T @ U[:, j]
@@ -77,7 +66,6 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
             r -= V[:, :j+1] @ (V[:, :j+1].T @ r)
         else:
             r -= alpha[j] * v
-
         if j < k - 1 or full:
             beta[j] = np.linalg.norm(r)
             if beta[j] == 0:
@@ -87,12 +75,10 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
                 V[:, j+1] = r / beta[j]
             else:
                 v = r / beta[j]
-
     if not reortho:
         V = v
     if reortho < 2:
         U = u
-    
     return V, U, alpha, beta
 
 
@@ -102,14 +88,11 @@ def krylov_ata_expand(A, V, U, c, k=10):
     U = np.concatenate((U, np.zeros((U.shape[0], k))), axis=1)
     alpha = np.zeros(k)
     beta = np.zeros(k)
-    
-
     for j in range(m, k + m):
         if j == m:
             r = A @ V[:, j - 1] - (U[:, :j - 1] @ c.T)
         else:
             r = A @ V[:, j - 1] - beta[j - m - 1] * U[:, j - 2]
-
         r -= - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
         alpha[j - m] = np.linalg.norm(r)
         if alpha[j - m] == 0:
@@ -125,7 +108,7 @@ def krylov_ata_expand(A, V, U, c, k=10):
     return V, U, alpha, beta
 
 
-def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim=20, maxit=1000, target=np.inf, info=1):
+def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim=20, maxit=1000, info=1):
     if v1 is None:
         v1 = np.random.rand(A.shape[1])
     if mindim < nr:
@@ -134,7 +117,6 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
         maxdim = 2 * mindim
     if absrel == 'rel':
         tol *= np.linalg.norm(A, 1)
-
     B = np.zeros((maxdim, maxdim + 1))
     print(1)
     # Slow Here
@@ -169,10 +151,10 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
             sigma = sigma[:nr]
             V = V[:, :nr]
             U = U[:, :nr]
-            mvs = np.arange(1,k + 2) * (maxdim - mindim) + mindim
+            mvs = np.arange(1, k + 2) * (maxdim - mindim) + mindim
             print(f"Found after {k + 1} iteration(s) with residual = {err}")
             return sigma, V, U, hist[:k+1], mvs   
-    mvs = 2 * (np.arange(1,k + 2) * (maxdim - mindim) + mindim)
+    mvs = 2 * (np.arange(1, k + 2) * (maxdim - mindim) + mindim)
     if info:
         print(f"Quit after max {k + 1} iterations with residual = {err}")
     sigma = sigma[:mindim]
