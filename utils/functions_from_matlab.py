@@ -105,7 +105,6 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
         V = v
     if reortho < 2:
         U = u
-
     
     return V, U, alpha, beta
 
@@ -149,32 +148,28 @@ def krylov_schur_svd(A, v1 = None, nr = 1, tol = 1e-6, absrel = 'rel', mindim = 
         tol *= np.linalg.norm(A, 1)
 
     B = np.zeros((maxdim, maxdim + 1))
-
-    #Slow Here
+    print(1)
+    # Slow Here
     V, U, alpha, beta = krylov_ata(A, v1, mindim)
     print(2)
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
-    hist = np.zeros(maxit, dtype=np.float64)
-    
-    np.set_printoptions(precision=8)
-    
-    #Modified MATLAB code ordering
+    hist = np.zeros(maxit, dtype=np.float64)    
+    np.set_printoptions(precision=12) 
+    # Modified MATLAB code ordering
     print(3)
+    # Slow Here
     v, u, a, b = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim)
+    print(4)
     for k in range(maxit):
-        # Slow Here
         V, U, alpha, beta = v.copy(), u.copy(), a.copy(), b.copy()
-        
-        print(4)
-        B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + np.diag(beta[:maxdim - mindim - 1], 1)
-        
+        print(5)
+        B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + np.diag(beta[:maxdim - mindim - 1], 1)        
         B[maxdim - 1, maxdim] = beta[maxdim - mindim - 1]
         X, sigma, Y = np.linalg.svd(B[:maxdim, :maxdim])
         # Restart of Lanczos algorithm
         V = np.concatenate((element(V[:, :maxdim] @ Y, list(range(V.shape[0])), list(range(mindim))), V[:, maxdim:maxdim + 1]), axis=1)
-        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])), list(range(mindim)))
-        
+        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])), list(range(mindim)))    
         c = B[:, maxdim]
         e = (c @ X)[:mindim]
         B[:mindim, :mindim + 1] = np.concatenate((np.diag(sigma[:mindim]), e.reshape(-1, 1)), axis=1)
@@ -183,17 +178,18 @@ def krylov_schur_svd(A, v1 = None, nr = 1, tol = 1e-6, absrel = 'rel', mindim = 
         
         if info:
             print(str(k) + ": " + str(hist[k]))
-        if hist[k] < tol:
+        if err < tol:
             sigma = sigma[:nr]
             V = V[:, :nr]
             U = U[:, :nr]
             mvs = np.arange(1, k + 1) * (maxdim - mindim) + mindim
-            print(f"Found after {k} iterations with residual = {hist[k]}")
+            print(mvs)
+            print(f"Found after {k + 1} iteration(s) with residual = {err}")
             return sigma, V, U, hist[:k+1], mvs
     
     mvs = 2 * (np.arange(1, k + 1) * (maxdim - mindim) + mindim)
     if info:
-        print(f"Quit after max {k} iterations with residual = {err}")
+        print(f"Quit after max {k + 1} iterations with residual = {err}")
     sigma = sigma[:mindim]
     V = V[:, :mindim]
     return sigma, V, U, hist, mvs
