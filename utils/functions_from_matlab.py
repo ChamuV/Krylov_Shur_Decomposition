@@ -4,13 +4,6 @@ import numpy as np
 # np.set_printoptions(formatter={'float': '{: 0.4f}'.format})
 
 
-def mv(A, v, transp_flag):
-    if transp_flag == 0:
-        return A @ v
-    else:
-        return A.T @ v
-
-
 def unv(j, n):
     e = np.zeros(n)
     e[j] = 1
@@ -18,7 +11,7 @@ def unv(j, n):
 
 
 #  Get rid of function aspect
-def element(A, i=None, j=None, n=None):
+def element(A, i=None, j=None):
     # Handling default arguments
     if i is None:
         i = slice(None)  # Selecting all rows
@@ -33,13 +26,7 @@ def element(A, i=None, j=None, n=None):
                 e = A[i, j]
         else:
             e = A[i] if isinstance(i, list) else A[i]
-    else:  # Function
-        if j is None:
-            raise ValueError("j has to be nonempty when A is a function")
-        e = mv(A, unv(j, n), 0)
-        if i is not None:
-            e = e[i]
-
+    
     return e
 
 
@@ -56,34 +43,34 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if reortho:
         V = np.zeros((len_v1, k + 1))
         V[:, 0] = v1 / np.linalg.norm(v1)
-        # U = np.zeros((A.shape[0], k))
+        #U = np.zeros((A.shape[0], k))
     else:
         v = v1 / np.linalg.norm(v1)
 
     for j in range(k):
         if reortho:
-            r = mv(A, V[:, j], 0)
+            r = A @ V[:, j]
             if j == 0 and reortho == 2:
                 U = np.zeros((len(r), k))
         else:
-            r = mv(A, v, 0)
+            r = A @ v
 
         if j > 0:
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
                 r -= U[:, :j] @ (U[:, :j].T @ r)
-            # else: ###CHECK THIS###
-            #   r -= beta[j-1] * u
+            else:
+                r -= beta[j-1] * u
         alpha[j] = np.linalg.norm(r)
         if alpha[j] == 0:
             break
 
         if reortho == 2:
             U[:, j] = r / alpha[j]
-            r = mv(A, U[:, j], 1)
+            r = A.T @ U[:, j]
         else:
             u = r / alpha[j]
-            r = mv(A, u, 1)
+            r = A.T @ u
 
         if reortho:
             r -= alpha[j] * V[:, j]
@@ -116,18 +103,19 @@ def krylov_ata_expand(A, V, U, c, k=10):
     alpha = np.zeros(k)
     beta = np.zeros(k)
     
+
     for j in range(m, k + m):
         if j == m:
-            r = mv(A, V[:, j - 1], 0) - (U[:, :j - 1] @ c.T)
+            r = A @ V[:, j - 1] - (U[:, :j - 1] @ c.T)
         else:
-            r = mv(A, V[:, j - 1], 0) - beta[j - m - 1] * U[:, j - 2]
+            r = A @ V[:, j - 1] - beta[j - m - 1] * U[:, j - 2]
 
         r -= - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
         alpha[j - m] = np.linalg.norm(r)
         if alpha[j - m] == 0:
             break
         U[:, j - 1] = r / alpha[j - m]
-        r = mv(A, U[:, j - 1], 1) - alpha[j - m] * V[:, j - 1]
+        r = A.T @ U[:, j - 1] - alpha[j - m] * V[:, j - 1]
         r -= V[:, :j] @ (V[:, :j].T @ r)
         beta[j - m] = np.linalg.norm(r)
         if beta[j - m] == 0:
@@ -155,9 +143,7 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
     hist = np.zeros(maxit, dtype=np.float64)    
-
-    np.set_printoptions(precision=8) 
-
+    np.set_printoptions(precision=12) 
     # Modified MATLAB code ordering
     print(3)
     # Slow Here
@@ -176,8 +162,7 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
         e = (c @ X)[:mindim]
         B[:mindim, :mindim + 1] = np.concatenate((np.diag(sigma[:mindim]), e.reshape(-1, 1)), axis=1)
         err = np.linalg.norm(e[:nr])
-        hist[k] = err
-        
+        hist[k] = err 
         if info:
             print(str(k) + ": " + str(hist[k]))
         if err < tol:
@@ -186,12 +171,10 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
             U = U[:, :nr]
             mvs = np.arange(1, k + 1) * (maxdim - mindim) + mindim
             print(f"Found after {k + 1} iteration(s) with residual = {err}")
-            return sigma, V, U, hist[:k+1], mvs
-    
+            return sigma, V, U, hist[:k+1], mvs   
     mvs = 2 * (np.arange(1, k + 1) * (maxdim - mindim) + mindim)
     if info:
         print(f"Quit after max {k + 1} iterations with residual = {err}")
     sigma = sigma[:mindim]
     V = V[:, :mindim]
-    
     return sigma, V, U, hist, mvs
