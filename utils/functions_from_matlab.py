@@ -19,7 +19,7 @@ def element(A, i=None, j=None):
 
 
 # Performs Gram-Schmidt Method
-def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
+def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
     if v1 is None:
         v1 = np.random.randn(A.shape[1])
     k = min(k, min(A.shape))
@@ -35,14 +35,17 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     for j in range(k):
         if reortho:
             r = A @ V[:, j]
+            counter += 1
             # if j == 0 and reortho == 2:
             #    U = np.zeros((len(r), k))
         else:
             r = A @ v
+            counter += 1
         if j > 0:
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
                 r -= U[:, :j] @ (U[:, :j].T @ r)
+                counter += 2
             # else: ####CHECK WHAT TO DO HERE
             #    r -= beta[j-1] * u
         alpha[j] = np.linalg.norm(r)
@@ -51,12 +54,15 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
         if reortho == 2:
             U[:, j] = r / alpha[j]
             r = A.T @ U[:, j]
+            counter += 1
         else:
             u = r / alpha[j]
             r = A.T @ u
+            counter += 1
         if reortho:
             r -= alpha[j] * V[:, j]
             r -= V[:, :j+1] @ (V[:, :j+1].T @ r)
+            counter += 2
         else:
             r -= alpha[j] * v
         if j < k - 1 or full:
@@ -72,10 +78,10 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
         V = v
     if reortho < 2:
         U = u
-    return V, U, alpha, beta
+    return V, U, alpha, beta, counter
 
 # Expands the number of basis vectors in the space
-def krylov_ata_expand(A, V, U, c, k=10):
+def krylov_ata_expand(A, V, U, c, k=10, counter = 0):
     m = V.shape[1]
     V = np.concatenate((V, np.zeros((V.shape[0], k))), axis=1)
     U = np.concatenate((U, np.zeros((U.shape[0], k))), axis=1)
@@ -84,23 +90,28 @@ def krylov_ata_expand(A, V, U, c, k=10):
     for j in range(m, k + m):
         if j == m:
             r = A @ V[:, j - 1] - (U[:, :j - 1] @ c.T)
+            counter += 2
         else:
             r = A @ V[:, j - 1] - beta[j - m - 1] * U[:, j - 2]
+            counter += 1
         r -= - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
+        counter += 2
         alpha[j - m] = np.linalg.norm(r)
         if alpha[j - m] == 0:
             break
         U[:, j - 1] = r / alpha[j - m]
         r = A.T @ U[:, j - 1] - alpha[j - m] * V[:, j - 1]
+        counter += 1
         r -= V[:, :j] @ (V[:, :j].T @ r)
+        counter += 2
         beta[j - m] = np.linalg.norm(r)
         if beta[j - m] == 0:
             break
         V[:, j] = r / beta[j - m]
-    return V, U, alpha, beta
+    return V, U, alpha, beta, counter
 
 
-def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim=20, maxit=1000, info=1):
+def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim=20, maxit=1000, info=1, counter = 0):
     if v1 is None:
         v1 = np.random.rand(A.shape[1])
     if mindim < nr:
@@ -111,14 +122,16 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
         tol *= np.linalg.norm(A, 1)
     B = np.zeros((maxdim, maxdim + 1))
     # Slow Here
-    V, U, alpha, beta = krylov_ata(A, v1, mindim)
+    V, U, alpha, beta, counter = krylov_ata(A, v1, mindim, counter = counter)
+    print((1,counter))
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
     hist = np.zeros(maxit, dtype=np.float64)    
     np.set_printoptions(precision=15) 
     # Modified MATLAB code ordering
     # Slow Here
-    v, u, a, b = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim)
+    v, u, a, b , counter = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim, counter)
+    print((2,counter))
     for k in range(maxit):
         V, U, alpha, beta = v.copy(), u.copy(), a.copy(), b.copy()
         B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + np.diag(beta[:maxdim - mindim - 1], 1)        
@@ -126,9 +139,12 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
         X, sigma, Y = np.linalg.svd(B[:maxdim, :maxdim])
         # Restart of Lanczos algorithm
         V = np.concatenate((element(V[:, :maxdim] @ Y, list(range(V.shape[0])), list(range(mindim))), V[:, maxdim:maxdim + 1]), axis=1)
-        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])), list(range(mindim)))    
+        counter += 1
+        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])), list(range(mindim))) 
+        counter += 1   
         c = B[:, maxdim]
         e = (c @ X)[:mindim]
+        counter += 1
         B[:mindim, :mindim + 1] = np.concatenate((np.diag(sigma[:mindim]), e.reshape(-1, 1)), axis=1)
         err = np.linalg.norm(e[:nr])
         hist[k] = err 
@@ -139,11 +155,13 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
             V = V[:, :nr]
             U = U[:, :nr]
             mvs = np.arange(1, k + 2) * (maxdim - mindim) + mindim
+            print((3,counter))
             print(f"Found after {k + 1} iteration(s) with residual = {err}")
-            return sigma, V, U, hist[:k+1], mvs   
+            return sigma, V, U, hist[:k+1], mvs, counter  
+    print((3,counter))
     mvs = 2 * (np.arange(1, k + 2) * (maxdim - mindim) + mindim)
     if info:
         print(f"Quit after max {k + 1} iterations with residual = {err}")
     sigma = sigma[:mindim]
     V = V[:, :mindim]
-    return sigma, V, U, hist, mvs
+    return sigma, V, U, hist, mvs, counter
