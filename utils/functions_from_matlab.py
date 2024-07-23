@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def element(A, i=None, j=None):
     # Handling default arguments
     if i is None:
@@ -17,7 +18,7 @@ def element(A, i=None, j=None):
     return e
 
 
-#Performs Gram-Schmidt Method
+# Performs Gram-Schmidt Method
 def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if v1 is None:
         v1 = np.random.randn(A.shape[1])
@@ -28,17 +29,16 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
     if reortho:
         V = np.zeros((len_v1, k + 1))
         V[:, 0] = v1 / np.linalg.norm(v1)
-        # U = np.zeros((A.shape[0], k))
+        U = np.zeros((A.shape[0], k))
     else:
         v = v1 / np.linalg.norm(v1)
     for j in range(k):
         if reortho:
             r = A @ V[:, j]
-            if j == 0 and reortho == 2:
-                U = np.zeros((len(r), k))
+            # if j == 0 and reortho == 2:
+            #    U = np.zeros((len(r), k))
         else:
             r = A @ v
-
         if j > 0:
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
@@ -54,7 +54,6 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
         else:
             u = r / alpha[j]
             r = A.T @ u
-
         if reortho:
             r -= alpha[j] * V[:, j]
             r -= V[:, :j+1] @ (V[:, :j+1].T @ r)
@@ -75,7 +74,7 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2):
         U = u
     return V, U, alpha, beta
 
-#Expands the number of basis vectors in the space
+# Expands the number of basis vectors in the space
 def krylov_ata_expand(A, V, U, c, k=10):
     m = V.shape[1]
     V = np.concatenate((V, np.zeros((V.shape[0], k))), axis=1)
@@ -98,7 +97,6 @@ def krylov_ata_expand(A, V, U, c, k=10):
         if beta[j - m] == 0:
             break
         V[:, j] = r / beta[j - m]
-
     return V, U, alpha, beta
 
 
@@ -112,22 +110,17 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
     if absrel == 'rel':
         tol *= np.linalg.norm(A, 1)
     B = np.zeros((maxdim, maxdim + 1))
-    print(1)
     # Slow Here
     V, U, alpha, beta = krylov_ata(A, v1, mindim)
-    print(2)
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
     hist = np.zeros(maxit, dtype=np.float64)    
     np.set_printoptions(precision=15) 
     # Modified MATLAB code ordering
-    print(3)
     # Slow Here
     v, u, a, b = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim)
-    print(4)
     for k in range(maxit):
         V, U, alpha, beta = v.copy(), u.copy(), a.copy(), b.copy()
-        print(5)
         B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + np.diag(beta[:maxdim - mindim - 1], 1)        
         B[maxdim - 1, maxdim] = beta[maxdim - mindim - 1]
         X, sigma, Y = np.linalg.svd(B[:maxdim, :maxdim])
