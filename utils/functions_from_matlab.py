@@ -1,5 +1,5 @@
 import numpy as np
-
+from time import time
 
 def element(A, i=None, j=None):
     # Handling default arguments
@@ -20,6 +20,10 @@ def element(A, i=None, j=None):
 
 # Performs Gram-Schmidt Method
 def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
+    t1 = 0
+    t2 = 0
+    t3 = 0
+    t4 = 0
     if v1 is None:
         v1 = np.random.randn(A.shape[1])
     k = min(k, min(A.shape))
@@ -31,26 +35,31 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
         V[:, 0] = v1 / np.linalg.norm(v1)
         U = np.zeros((A.shape[0], k))
     else:
-        v = v1 / np.linalg.norm(v1)
+        v = v1 / np.linalg.norm(v1) 
     for j in range(k):
+        ## b2 = V[:, j].copy()
+        start = time()   
         if reortho:
             r = A @ V[:, j]
-            counter += 1
+            ## r = A.dot(b2)
             # if j == 0 and reortho == 2:
             #    U = np.zeros((len(r), k))
         else:
             r = A @ v
-            counter += 1
+        t1 += time() - start
+        counter += 1
+        start = time()
         if j > 0:
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
                 r -= U[:, :j] @ (U[:, :j].T @ r)
-                counter += 2
             # else: ####CHECK WHAT TO DO HERE
             #    r -= beta[j-1] * u
         alpha[j] = np.linalg.norm(r)
         if alpha[j] == 0:
             break
+        t2 += time() - start
+        start = time()
         if reortho == 2:
             U[:, j] = r / alpha[j]
             r = A.T @ U[:, j]
@@ -59,10 +68,11 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
             u = r / alpha[j]
             r = A.T @ u
             counter += 1
+        t3 += time() - start
+        start = time()
         if reortho:
             r -= alpha[j] * V[:, j]
             r -= V[:, :j+1] @ (V[:, :j+1].T @ r)
-            counter += 2
         else:
             r -= alpha[j] * v
         if j < k - 1 or full:
@@ -74,10 +84,16 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
                 V[:, j+1] = r / beta[j]
             else:
                 v = r / beta[j]
+        t4 += time() - start
     if not reortho:
         V = v
     if reortho < 2:
         U = u
+    print('ATA')
+    print(t1)
+    print(t2)
+    print(t3)
+    print(t4)
     return V, U, alpha, beta, counter
 
 # Expands the number of basis vectors in the space
@@ -87,27 +103,42 @@ def krylov_ata_expand(A, V, U, c, k=10, counter = 0):
     U = np.concatenate((U, np.zeros((U.shape[0], k))), axis=1)
     alpha = np.zeros(k)
     beta = np.zeros(k)
+    t1 = 0
+    t2 = 0
+    t3 = 0
+    t4 = 0
     for j in range(m, k + m):
+        start = time()
         if j == m:
             r = A @ V[:, j - 1] - (U[:, :j - 1] @ c.T)
-            counter += 2
+            counter += 1
         else:
             r = A @ V[:, j - 1] - beta[j - m - 1] * U[:, j - 2]
             counter += 1
+        t1 += time() - start
+        start = time()
         r -= - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
-        counter += 2
         alpha[j - m] = np.linalg.norm(r)
         if alpha[j - m] == 0:
             break
         U[:, j - 1] = r / alpha[j - m]
+        t2 += time() - start
+        start = time()
         r = A.T @ U[:, j - 1] - alpha[j - m] * V[:, j - 1]
+        t3 += time() - start
+        start = time()
         counter += 1
         r -= V[:, :j] @ (V[:, :j].T @ r)
-        counter += 2
         beta[j - m] = np.linalg.norm(r)
         if beta[j - m] == 0:
             break
         V[:, j] = r / beta[j - m]
+        t4 += time() - start
+    print('ATAE')
+    print(t1)
+    print(t2)
+    print(t3)
+    print(t4)
     return V, U, alpha, beta, counter
 
 
@@ -123,28 +154,31 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
     B = np.zeros((maxdim, maxdim + 1))
     # Slow Here
     V, U, alpha, beta, counter = krylov_ata(A, v1, mindim, counter = counter)
-    print((1,counter))
+    #print(end1)
+    #print((1,counter))
     # Bidiagonal Form for the first mindim rows and cols
     B[:mindim + 1, :mindim + 1] = np.diag(np.append(alpha, [0])) + np.diag(beta, 1)
     hist = np.zeros(maxit, dtype=np.float64)    
     np.set_printoptions(precision=15) 
     # Modified MATLAB code ordering
     # Slow Here
-    v, u, a, b , counter = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim, counter)
-    print((2,counter))
+    # v, u, a, b , counter = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim, counter)
+    #print((2,counter))
     for k in range(maxit):
-        V, U, alpha, beta = v.copy(), u.copy(), a.copy(), b.copy()
+        V, U, alpha, beta, counter = krylov_ata_expand(A, V, U, B[:mindim, mindim], maxdim - mindim, counter)
+        #end2 = time() - start2
+        #print(end2)
+        #print(alpha)
+        #print(beta)
+        #V, U, alpha, beta = v.copy(), u.copy(), a.copy(), b.copy()
         B[mindim: maxdim, mindim: maxdim] = np.diag(alpha) + np.diag(beta[:maxdim - mindim - 1], 1)        
         B[maxdim - 1, maxdim] = beta[maxdim - mindim - 1]
         X, sigma, Y = np.linalg.svd(B[:maxdim, :maxdim])
         # Restart of Lanczos algorithm
         V = np.concatenate((element(V[:, :maxdim] @ Y, list(range(V.shape[0])), list(range(mindim))), V[:, maxdim:maxdim + 1]), axis=1)
-        counter += 1
-        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])), list(range(mindim))) 
-        counter += 1   
+        U = element(U[:, :maxdim] @ X, list(range(U.shape[0])), list(range(mindim)))   
         c = B[:, maxdim]
         e = (c @ X)[:mindim]
-        counter += 1
         B[:mindim, :mindim + 1] = np.concatenate((np.diag(sigma[:mindim]), e.reshape(-1, 1)), axis=1)
         err = np.linalg.norm(e[:nr])
         hist[k] = err 
@@ -155,10 +189,10 @@ def krylov_schur_svd(A, v1=None, nr=1, tol=1e-6, absrel='rel', mindim=10, maxdim
             V = V[:, :nr]
             U = U[:, :nr]
             mvs = np.arange(1, k + 2) * (maxdim - mindim) + mindim
-            print((3,counter))
+            print(counter)
             print(f"Found after {k + 1} iteration(s) with residual = {err}")
             return sigma, V, U, hist[:k+1], mvs, counter  
-    print((3,counter))
+    print(counter)
     mvs = 2 * (np.arange(1, k + 2) * (maxdim - mindim) + mindim)
     if info:
         print(f"Quit after max {k + 1} iterations with residual = {err}")
