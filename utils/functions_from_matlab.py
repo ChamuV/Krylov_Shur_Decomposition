@@ -20,10 +20,10 @@ def element(A, i=None, j=None):
 
 # Performs Gram-Schmidt Method
 def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
-    t1 = 0
+    """t1 = 0
     t2 = 0
     t3 = 0
-    t4 = 0
+    t4 = 0"""
     if v1 is None:
         v1 = np.random.randn(A.shape[1])
     k = min(k, min(A.shape))
@@ -38,7 +38,7 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
         v = v1 / np.linalg.norm(v1) 
     for j in range(k):
         ## b2 = V[:, j].copy()
-        start = time()   
+        #start = time()   
         if reortho:
             r = A @ V[:, j]
             ## r = A.dot(b2)
@@ -46,9 +46,9 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
             #    U = np.zeros((len(r), k))
         else:
             r = A @ v
-        t1 += time() - start
+        #t1 += time() - start
         counter += 1
-        start = time()
+        #start = time()
         if j > 0:
             if reortho == 2:
                 r -= beta[j-1] * U[:, j-1]
@@ -58,8 +58,8 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
         alpha[j] = np.linalg.norm(r)
         if alpha[j] == 0:
             break
-        t2 += time() - start
-        start = time()
+        #t2 += time() - start
+        #start = time()
         if reortho == 2:
             U[:, j] = r / alpha[j]
             r = A.T @ U[:, j]
@@ -68,8 +68,8 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
             u = r / alpha[j]
             r = A.T @ u
             counter += 1
-        t3 += time() - start
-        start = time()
+        #t3 += time() - start
+        #start = time()
         if reortho:
             r -= alpha[j] * V[:, j]
             r -= V[:, :j+1] @ (V[:, :j+1].T @ r)
@@ -84,16 +84,16 @@ def krylov_ata(A, v1=None, k=10, full=1, reortho=2,counter = 0):
                 V[:, j+1] = r / beta[j]
             else:
                 v = r / beta[j]
-        t4 += time() - start
+        #t4 += time() - start
     if not reortho:
         V = v
     if reortho < 2:
         U = u
-    print('ATA')
+    """print('ATA')
     print(t1)
     print(t2)
     print(t3)
-    print(t4)
+    print(t4)"""
     return V, U, alpha, beta, counter
 
 # Expands the number of basis vectors in the space
@@ -103,42 +103,42 @@ def krylov_ata_expand(A, V, U, c, k=10, counter = 0):
     U = np.concatenate((U, np.zeros((U.shape[0], k))), axis=1)
     alpha = np.zeros(k)
     beta = np.zeros(k)
-    t1 = 0
+    """t1 = 0
     t2 = 0
     t3 = 0
-    t4 = 0
+    t4 = 0"""
     for j in range(m, k + m):
-        start = time()
+        #start = time()
         if j == m:
             r = A @ V[:, j - 1] - (U[:, :j - 1] @ c.T)
             counter += 1
         else:
             r = A @ V[:, j - 1] - beta[j - m - 1] * U[:, j - 2]
             counter += 1
-        t1 += time() - start
-        start = time()
+        #t1 += time() - start
+        #start = time()
         r -= - U[:, :j - 1] @ (U[:, :j - 1].T @ r)
         alpha[j - m] = np.linalg.norm(r)
         if alpha[j - m] == 0:
             break
         U[:, j - 1] = r / alpha[j - m]
-        t2 += time() - start
-        start = time()
+        #t2 += time() - start
+        #start = time()
         r = A.T @ U[:, j - 1] - alpha[j - m] * V[:, j - 1]
-        t3 += time() - start
-        start = time()
+        #t3 += time() - start
+        #start = time()
         counter += 1
         r -= V[:, :j] @ (V[:, :j].T @ r)
         beta[j - m] = np.linalg.norm(r)
         if beta[j - m] == 0:
             break
         V[:, j] = r / beta[j - m]
-        t4 += time() - start
-    print('ATAE')
+        #t4 += time() - start
+    """print('ATAE')
     print(t1)
     print(t2)
     print(t3)
-    print(t4)
+    print(t4)"""
     return V, U, alpha, beta, counter
 
 
